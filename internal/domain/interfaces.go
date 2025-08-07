@@ -29,8 +29,8 @@ type SchedulerRepository interface {
 type BidCache interface {
 	AtomicBidUpdate(ctx context.Context, auctionID, userID string, amount float64) (bool, error)
 	GetCurrentBid(ctx context.Context, auctionID string) (*LocalAuctionCache, error)
-	SetAuctionIncrementRule(ctx context.Context, auctionID string, rule float64) error
-	InitializeAuction(ctx context.Context, auctionID string, startingBid float64, incrementRule float64) error
+	SetBiddingIncrementRule(ctx context.Context, auctionID string, rule float64) error
+	InitializeBidding(ctx context.Context, auctionID string, startingBid float64, incrementRule float64) error
 }
 
 type AuctionStateCache interface {
@@ -40,7 +40,7 @@ type AuctionStateCache interface {
 
 // Event interfaces
 type EventPublisher interface {
-	PublishBidEvent(ctx context.Context, event *BidEvent) error
+	PublishBiddingEvent(ctx context.Context, event *BidEvent) error
 }
 
 type EventSubscriber interface {
@@ -61,6 +61,9 @@ type AuctionBroadcaster interface {
 // Validation interface
 type BidValidator interface {
 	ValidateIncrement(currentAmount, newAmount float64) bool
+}
+
+type BiddingRuleDao interface {
 	GetMinimumBid(currentAmount float64) float64
 	GetIncrementRule(amount float64) float64
 	LoadRules(ctx context.Context) error

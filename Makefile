@@ -61,7 +61,7 @@ run-auction-manager:
 	@$(GOCMD) run ./cmd/auction-manager
 
 # Docker commands
-docker-up:
+docker-up: docker-rebuild
 	@echo "Starting services with Docker Compose..."
 	@docker-compose -f deployments/docker-compose.yml up -d
 

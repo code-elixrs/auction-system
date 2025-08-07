@@ -50,7 +50,7 @@ services:
       args:
         SERVICE: auction-service
     ports:
-      - "8081:8081"  # Host:Container mapping
+      - "8081:8080"  # Host:Container mapping
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080              # This is ignored, we use 8081 in code

@@ -16,7 +16,7 @@ type AuctionManager struct {
 	eventPub       domain.EventPublisher
 	scheduler      domain.AuctionScheduler
 	leaderElection domain.LeaderElection
-	validator      domain.BidValidator
+	biddingRuleDao domain.BiddingRuleDao
 	instanceID     string
 	log            logger.Logger
 	auctionTimers  map[string]*time.Timer
@@ -30,7 +30,7 @@ func NewAuctionManager(
 	eventPub domain.EventPublisher,
 	scheduler domain.AuctionScheduler,
 	leaderElection domain.LeaderElection,
-	validator domain.BidValidator,
+	biddingRuleDao domain.BiddingRuleDao,
 	instanceID string,
 	log logger.Logger,
 ) *AuctionManager {
@@ -41,7 +41,7 @@ func NewAuctionManager(
 		eventPub:       eventPub,
 		scheduler:      scheduler,
 		leaderElection: leaderElection,
-		validator:      validator,
+		biddingRuleDao: biddingRuleDao,
 		instanceID:     instanceID,
 		log:            log,
 		auctionTimers:  make(map[string]*time.Timer),
@@ -64,8 +64,8 @@ func (am *AuctionManager) CreateAuction(ctx context.Context, startTime, endTime 
 	}
 
 	// Initialize in Redis with starting bid and increment rule
-	incrementRule := am.validator.GetIncrementRule(startingBid)
-	if err := am.bidCache.InitializeAuction(ctx, auction.ID, startingBid, incrementRule); err != nil {
+	incrementRule := am.biddingRuleDao.GetIncrementRule(startingBid)
+	if err := am.bidCache.InitializeBidding(ctx, auction.ID, startingBid, incrementRule); err != nil {
 		return nil, err
 	}
 
@@ -124,7 +124,7 @@ func (am *AuctionManager) EndAuction(ctx context.Context, auctionID string) erro
 	am.cancelTimer(auctionID)
 
 	// Publish end event
-	return am.eventPub.PublishBidEvent(ctx, &domain.BidEvent{
+	return am.eventPub.PublishBiddingEvent(ctx, &domain.BidEvent{
 		Type:      domain.AuctionEndedBidRejected,
 		AuctionID: auctionID,
 		Timestamp: time.Now(),
@@ -161,7 +161,7 @@ func (am *AuctionManager) CheckAndExtendAuction(ctx context.Context, auctionID s
 		am.setEndTimer(auctionID, extensionDuration)
 
 		// Publish extension event
-		am.eventPub.PublishBidEvent(ctx, &domain.BidEvent{
+		am.eventPub.PublishBiddingEvent(ctx, &domain.BidEvent{
 			Type:      domain.AuctionExtended,
 			AuctionID: auctionID,
 			Timestamp: time.Now(),

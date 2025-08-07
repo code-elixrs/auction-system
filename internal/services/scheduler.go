@@ -17,7 +17,8 @@ type CronAuctionScheduler struct {
 	log        logger.Logger
 }
 
-func NewCronAuctionScheduler(repo domain.SchedulerRepository, auctionMgr *AuctionManager, log logger.Logger) *CronAuctionScheduler {
+func NewCronAuctionScheduler(repo domain.SchedulerRepository, auctionMgr *AuctionManager,
+	log logger.Logger) *CronAuctionScheduler {
 	return &CronAuctionScheduler{
 		cron:       cron.New(cron.WithSeconds()),
 		repo:       repo,

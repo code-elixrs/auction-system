@@ -10,15 +10,16 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type RedisBidCache struct {
+type BidCacheImpl struct {
 	client *redis.Client
 }
 
-func NewRedisBidCache(client *redis.Client) *RedisBidCache {
-	return &RedisBidCache{client: client}
+func NewBidCache(client *redis.Client) *BidCacheImpl {
+	return &BidCacheImpl{client: client}
 }
 
-func (r *RedisBidCache) InitializeAuction(ctx context.Context, auctionID string, startingBid float64, incrementRule float64) error {
+func (r *BidCacheImpl) InitializeBidding(ctx context.Context, auctionID string,
+	startingBid float64, incrementRule float64) error {
 	key := fmt.Sprintf("auction:%s", auctionID)
 
 	return r.client.HMSet(ctx, key,
@@ -29,7 +30,7 @@ func (r *RedisBidCache) InitializeAuction(ctx context.Context, auctionID string,
 	).Err()
 }
 
-func (r *RedisBidCache) AtomicBidUpdate(ctx context.Context, auctionID, userID string, amount float64) (bool, error) {
+func (r *BidCacheImpl) AtomicBidUpdate(ctx context.Context, auctionID, userID string, amount float64) (bool, error) {
 	luaScript := `
         local auction_key = "auction:" .. KEYS[1]
         local current_amount = redis.call('HGET', auction_key, 'current_bid')
@@ -74,7 +75,7 @@ func (r *RedisBidCache) AtomicBidUpdate(ctx context.Context, auctionID, userID s
 	return resultSlice[0].(int64) == 1, nil
 }
 
-func (r *RedisBidCache) GetCurrentBid(ctx context.Context, auctionID string) (*domain.LocalAuctionCache, error) {
+func (r *BidCacheImpl) GetCurrentBid(ctx context.Context, auctionID string) (*domain.LocalAuctionCache, error) {
 	key := fmt.Sprintf("auction:%s", auctionID)
 
 	result, err := r.client.HMGet(ctx, key, "current_bid", "winner_id", "increment_rule").Result()
@@ -105,7 +106,7 @@ func (r *RedisBidCache) GetCurrentBid(ctx context.Context, auctionID string) (*d
 	}, nil
 }
 
-func (r *RedisBidCache) SetAuctionIncrementRule(ctx context.Context, auctionID string, rule float64) error {
+func (r *BidCacheImpl) SetBiddingIncrementRule(ctx context.Context, auctionID string, rule float64) error {
 	key := fmt.Sprintf("auction:%s", auctionID)
 	return r.client.HSet(ctx, key, "increment_rule", fmt.Sprintf("%.2f", rule)).Err()
 }

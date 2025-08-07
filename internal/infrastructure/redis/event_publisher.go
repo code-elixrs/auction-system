@@ -8,15 +8,15 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type RedisEventPublisher struct {
+type EventPublisherImpl struct {
 	client *redis.Client
 }
 
-func NewRedisEventPublisher(client *redis.Client) *RedisEventPublisher {
-	return &RedisEventPublisher{client: client}
+func NewEventPublisher(client *redis.Client) *EventPublisherImpl {
+	return &EventPublisherImpl{client: client}
 }
 
-func (r *RedisEventPublisher) PublishBidEvent(ctx context.Context, event *domain.BidEvent) error {
+func (r *EventPublisherImpl) PublishBiddingEvent(ctx context.Context, event *domain.BidEvent) error {
 	eventData := fmt.Sprintf("%s:%s:%s:%.2f:%d",
 		event.AuctionID, event.Type, event.UserID, event.Amount, event.Timestamp.Unix())
 

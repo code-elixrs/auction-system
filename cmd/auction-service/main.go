@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -130,25 +130,12 @@ func main() {
 	log.Info("Starting Auction Manager Service")
 
 	// Load configuration
+	// TODO: This should be service specific
 	cfg, err := config.Load()
 	if err != nil {
 		log.Error("Failed to load config", "error", err)
 		os.Exit(1)
 	}
-
-	// FORCE PORT CONFIGURATION FOR AUCTION MANAGER
-	managerPort := 8081
-	if portEnv := os.Getenv("MANAGER_PORT"); portEnv != "" {
-		if p, err := strconv.Atoi(portEnv); err == nil {
-			managerPort = p
-		}
-	}
-
-	log.Info("Configuration loaded",
-		"redis_address", cfg.Redis.Address,
-		"mysql_dsn", "***hidden***",
-		"instance_id", cfg.Instance.ID,
-		"manager_port", managerPort)
 
 	// Initialize Redis
 	rdb := redisClient.NewClient(&redisClient.Options{
@@ -172,7 +159,12 @@ func main() {
 		log.Error("Failed to connect to MySQL", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Error("Failed to close MySQL connection", "error", err)
+		}
+	}(db)
 
 	db.SetMaxOpenConns(cfg.MySQL.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.MySQL.MaxIdleConns)
@@ -185,18 +177,20 @@ func main() {
 	}
 	log.Info("Connected to MySQL")
 
+	// TODO: Add loggers and proper logging in each components
 	// Initialize repositories
 	auctionRepo := mysql.NewMySQLAuctionRepository(db)
 	schedulerRepo := mysql.NewMySQLSchedulerRepository(db)
 
-	// Initialize Redis services
-	bidCache := redis.NewRedisBidCache(rdb)
-	stateCache := redis.NewRedisStateCache(rdb)
-	eventPublisher := redis.NewRedisEventPublisher(rdb)
+	// Initialize Redis based components
+	bidCache := redis.NewBidCache(rdb)
+	stateCache := redis.NewStateCache(rdb)
+	eventPublisher := redis.NewEventPublisher(rdb)
 
-	// Initialize validator
-	validator := services.NewRedisBidValidator(rdb)
-	if err := validator.LoadRules(ctx); err != nil {
+	//Initialize validator
+
+	biddingRuleDao := services.NewBiddingRuleDao(rdb)
+	if err := biddingRuleDao.LoadRules(ctx); err != nil {
 		log.Error("Failed to load validation rules", "error", err)
 		os.Exit(1)
 	}
@@ -205,6 +199,8 @@ func main() {
 	leaderElection := leader.NewRedisLeaderElection(rdb, cfg.Leader.TTL)
 
 	// Initialize auction manager
+
+	//TODO: Remove this cyclic dependency later!!
 	auctionManager := services.NewAuctionManager(
 		auctionRepo,
 		stateCache,
@@ -212,13 +208,14 @@ func main() {
 		eventPublisher,
 		nil, // scheduler will be set below
 		leaderElection,
-		validator,
-		cfg.Instance.ID+"-manager",
+		biddingRuleDao,
+		cfg.Instance.ID,
 		log,
 	)
 
 	// Initialize scheduler
 	scheduler := services.NewCronAuctionScheduler(schedulerRepo, auctionManager, log)
+
 	auctionManager.SetScheduler(scheduler)
 
 	// Initialize Echo
@@ -281,18 +278,19 @@ func main() {
 			"status":    "ok",
 			"service":   "auction-manager",
 			"timestamp": time.Now().Format(time.RFC3339),
-			"port":      managerPort,
+			"port":      cfg.Server.Port,
 			"version":   "1.0.0",
 		})
 	})
 
+	// TODO: Remove after development!!
 	// Debug CORS endpoint
 	e.GET("/debug/cors", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"message": "CORS is working",
 			"method":  c.Request().Method,
 			"origin":  c.Request().Header.Get("Origin"),
-			"port":    managerPort,
+			"port":    cfg.Server.Port,
 		})
 	})
 
@@ -313,29 +311,27 @@ func main() {
 
 	// Try to become leader
 	go func() {
-		instanceID := cfg.Instance.ID + "-manager"
+		//instanceID := cfg.Instance.ID + "-manager"
 		for {
-			became, err := leaderElection.BecomeLeader(context.Background(), instanceID)
+			became, err := leaderElection.BecomeLeader(context.Background(), cfg.Instance.ID)
 			if err != nil {
 				log.Error("Failed to attempt leadership", "error", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
-
 			if became {
-				log.Info("Became auction manager leader", "instance_id", instanceID)
+				log.Info("Became auction manager leader", "instance_id", cfg.Instance.ID)
 			}
-
 			time.Sleep(10 * time.Second)
 		}
 	}()
 
 	// Start server with CORRECT PORT
-	serverAddr := fmt.Sprintf("0.0.0.0:%d", managerPort)
-	log.Info("Starting auction manager server", "address", serverAddr, "port", managerPort)
+	serverAddr := fmt.Sprintf("0.0.0.0:%d", cfg.Server.Port)
+	log.Info("Starting auction manager server", "address", serverAddr, "port", cfg.Server.Port)
 
 	go func() {
-		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(serverAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Server failed to start", "error", err)
 			os.Exit(1)
 		}
@@ -352,8 +348,12 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	scheduler.Stop()
-	leaderElection.ReleaseLeadership(ctx, cfg.Instance.ID+"-manager")
+	if err := scheduler.Stop(); err != nil {
+		log.Error("Failed to stop scheduler", "error", err)
+	}
+	if err := leaderElection.ReleaseLeadership(ctx, cfg.Instance.ID); err != nil {
+		log.Error("Failed to release leadership", "error", err)
+	}
 
 	if err := e.Shutdown(ctx); err != nil {
 		log.Error("Server forced to shutdown", "error", err)

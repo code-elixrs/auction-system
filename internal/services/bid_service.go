@@ -1,50 +1,45 @@
 package services
 
 import (
-	"auction-system/internal/domain"
-	"auction-system/pkg/logger"
 	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"auction-system/internal/domain"
+	"auction-system/pkg/logger"
 )
 
 type BidService struct {
-	bidCache       domain.BidCache
-	stateCache     domain.AuctionStateCache
-	userNotifier   domain.UserNotifier
-	validator      domain.BidValidator
-	localCache     map[string]*domain.LocalAuctionCache
-	cacheMutex     sync.RWMutex
-	eventListener  *EventListener
-	auctionManager *AuctionManager
-	log            logger.Logger
+	bidCache     domain.BidCache
+	stateCache   domain.AuctionStateCache
+	userNotifier domain.UserNotifier
+	localCache   map[string]*domain.LocalAuctionCache
+	cacheMutex   sync.RWMutex
+	//eventListener *EventListener
+	log logger.Logger
 }
 
 func NewBidService(
 	bidCache domain.BidCache,
 	stateCache domain.AuctionStateCache,
 	userNotifier domain.UserNotifier,
-	validator domain.BidValidator,
-	auctionManager *AuctionManager,
 	log logger.Logger,
 ) *BidService {
 	service := &BidService{
-		bidCache:       bidCache,
-		stateCache:     stateCache,
-		userNotifier:   userNotifier,
-		validator:      validator,
-		localCache:     make(map[string]*domain.LocalAuctionCache),
-		auctionManager: auctionManager,
-		log:            log,
+		bidCache:     bidCache,
+		stateCache:   stateCache,
+		userNotifier: userNotifier,
+		localCache:   make(map[string]*domain.LocalAuctionCache),
+		log:          log,
 	}
 
 	return service
 }
 
-func (s *BidService) SetEventListener(eventListener *EventListener) {
-	s.eventListener = eventListener
-}
+//func (s *BidService) SetEventListener(eventListener *EventListener) {
+//	s.eventListener = eventListener
+//}
 
 func (s *BidService) PlaceBid(ctx context.Context, auctionID, userID string, amount float64) error {
 	s.log.Info("Placing bid", "auction_id", auctionID, "user_id", userID, "amount", amount)
@@ -56,11 +51,15 @@ func (s *BidService) PlaceBid(ctx context.Context, auctionID, userID string, amo
 	}
 
 	if status != domain.AuctionActive {
-		s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
+		err := s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
 			"type":   "bid_rejected",
 			"reason": "auction_not_active",
 			"status": status.String(),
 		})
+		if err != nil {
+			s.log.Error("Failed to notify user", "auction_id", auctionID, "user_id", userID)
+			return err
+		}
 		return nil
 	}
 
@@ -69,32 +68,36 @@ func (s *BidService) PlaceBid(ctx context.Context, auctionID, userID string, amo
 		return err
 	}
 
-	// Quick local validation
-	s.cacheMutex.RLock()
-	cachedAuction := s.localCache[auctionID]
-	s.cacheMutex.RUnlock()
+	//// Quick local validation
+	//s.cacheMutex.RLock()
+	//cachedAuction := s.localCache[auctionID]
+	//s.cacheMutex.RUnlock()
 
-	if !s.validator.ValidateIncrement(cachedAuction.CurrentBid, amount) {
-		s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
-			"type":             "bid_rejected",
-			"reason":           "insufficient_increment",
-			"current_bid":      cachedAuction.CurrentBid,
-			"current_winner":   cachedAuction.WinnerID,
-			"required_minimum": s.validator.GetMinimumBid(cachedAuction.CurrentBid),
-		})
-		return nil
-	}
+	//if !s.validator.ValidateIncrement(cachedAuction.CurrentBid, amount) {
+	//	s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
+	//		"type":             "bid_rejected",
+	//		"reason":           "insufficient_increment",
+	//		"current_bid":      cachedAuction.CurrentBid,
+	//		"current_winner":   cachedAuction.WinnerID,
+	//		"required_minimum": s.biddingRuleDao.GetMinimumBid(cachedAuction.CurrentBid),
+	//	})
+	//	return nil
+	//}
 
 	// Atomic Redis update
-	success, err := s.bidCache.AtomicBidUpdate(ctx, auctionID, userID, amount)
+	_, err = s.bidCache.AtomicBidUpdate(ctx, auctionID, userID, amount)
 	if err != nil {
 		s.log.Error("Failed to update bid", "error", err)
+		err := s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
+			"type":           "bid_rejected",
+			"reason":         err.Error(),
+			"current_bid":    amount,
+			"current_winner": userID,
+		})
+		if err != nil {
+			return err
+		}
 		return err
-	}
-
-	// Check if we need to extend auction (30-second rule)
-	if success {
-		go s.checkAuctionExtension(auctionID)
 	}
 
 	return nil
@@ -117,12 +120,6 @@ func (s *BidService) ensureAuctionCached(ctx context.Context, auctionID string) 
 	}
 
 	return nil
-}
-
-func (s *BidService) checkAuctionExtension(auctionID string) {
-	// Check if auction ends within 30 seconds
-	// If so, extend by 30 seconds
-	s.auctionManager.CheckAndExtendAuction(context.Background(), auctionID, 30*time.Second)
 }
 
 func (s *BidService) UpdateLocalCache(auctionID string, bid float64, winnerID string) {
