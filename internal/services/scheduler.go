@@ -1,12 +1,13 @@
 package services
 
 import (
-	"auction-system/internal/domain"
-	"auction-system/pkg/logger"
-	"auction-system/pkg/utils"
 	"context"
 	"time"
 
+	"auction-system/internal/domain"
+	"auction-system/pkg/logger"
+	"auction-system/pkg/utils"
+	
 	"github.com/robfig/cron/v3"
 )
 

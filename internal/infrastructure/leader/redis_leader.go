@@ -1,9 +1,10 @@
 package leader
 
 import (
-	_ "auction-system/internal/domain"
 	"context"
 	"time"
+
+	_ "auction-system/internal/domain"
 
 	"github.com/go-redis/redis/v8"
 )

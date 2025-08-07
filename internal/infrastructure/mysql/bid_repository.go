@@ -1,10 +1,11 @@
 package mysql
 
 import (
-	"auction-system/internal/domain"
 	"context"
 	"database/sql"
 	"time"
+
+	"auction-system/internal/domain"
 )
 
 type MySQLBidRepository struct {

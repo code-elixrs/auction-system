@@ -1,10 +1,11 @@
 package websocket
 
 import (
-	"auction-system/internal/domain"
-	"auction-system/pkg/logger"
 	"encoding/json"
 	"sync"
+
+	"auction-system/internal/domain"
+	"auction-system/pkg/logger"
 )
 
 type ConnectionManager struct {

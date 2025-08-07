@@ -1,11 +1,12 @@
 package services
 
 import (
-	"auction-system/internal/domain"
-	"auction-system/pkg/logger"
 	"context"
 	"errors"
 	"fmt"
+
+	"auction-system/internal/domain"
+	"auction-system/pkg/logger"
 )
 
 type EventListener struct {

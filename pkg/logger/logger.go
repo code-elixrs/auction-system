@@ -16,52 +16,16 @@ type ZapLogger struct {
 	logger *zap.SugaredLogger
 }
 
-//	type LogrusLogger struct {
-//		logger *logrus.Logger
-//	}
 func New() Logger {
 	return NewWithConfig()
 }
 
-//	func New() Logger {
-//		logger := logrus.New()
-//		logger.SetFormatter(&logrus.JSONFormatter{})
-//
-//		return &LogrusLogger{logger: logger}
-//	}
 func NewWithConfig() Logger {
 	zapConfig := zap.NewProductionConfig()
 
 	// Set log level
 	zapConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 
-	// Configure encoding
-	//if config.Development {
-	//	zapConfig.Development = true
-	//	zapConfig.Encoding = "console"
-	//	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	//	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	//} else {
-	//	zapConfig.Encoding = "json"
-	//	zapConfig.EncoderConfig.TimeKey = "timestamp"
-	//	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	//}
-	//
-	//// Configure output paths
-	//zapConfig.OutputPaths = config.OutputPaths
-	//zapConfig.ErrorOutputPaths = config.ErrorOutputPaths
-	//
-	//// Add caller information if enabled
-	//if config.AddCaller {
-	//	zapConfig.EncoderConfig.CallerKey = "caller"
-	//	zapConfig.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-	//}
-	//
-	//// Add stack trace for error level and above
-	//if config.AddStackTrace {
-	//	zapConfig.EncoderConfig.StacktraceKey = "stacktrace"
-	//}
-	//
 	//// Build the logger
 	logger, err := zapConfig.Build(
 		zap.AddCallerSkip(1), // Skip one level to show actual caller
@@ -74,11 +38,7 @@ func NewWithConfig() Logger {
 		logger: logger.Sugar(),
 	}
 }
-func NewFromZap(zapLogger *zap.Logger) Logger {
-	return &ZapLogger{
-		logger: zapLogger.Sugar(),
-	}
-}
+
 func (l *ZapLogger) Info(msg string, keysAndValues ...interface{}) {
 	l.logger.Infow(msg, keysAndValues...)
 }

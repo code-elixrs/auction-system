@@ -16,8 +16,7 @@ type BidService struct {
 	userNotifier domain.UserNotifier
 	localCache   map[string]*domain.LocalAuctionCache
 	cacheMutex   sync.RWMutex
-	//eventListener *EventListener
-	log logger.Logger
+	log          logger.Logger
 }
 
 func NewBidService(

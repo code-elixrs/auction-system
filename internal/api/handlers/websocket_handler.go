@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+
 	"auction-system/internal/domain"
 	"auction-system/internal/infrastructure/websocket"
 	"auction-system/internal/services"
 	"auction-system/pkg/logger"
-	"net/http"
 
 	_ "github.com/gorilla/mux"
 )

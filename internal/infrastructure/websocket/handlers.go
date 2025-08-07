@@ -1,13 +1,14 @@
 package websocket
 
 import (
-	"auction-system/internal/domain"
-	"auction-system/internal/services"
-	"auction-system/pkg/logger"
 	"context"
 	"net/http"
 	"strconv"
 	"time"
+
+	"auction-system/internal/domain"
+	"auction-system/internal/services"
+	"auction-system/pkg/logger"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"

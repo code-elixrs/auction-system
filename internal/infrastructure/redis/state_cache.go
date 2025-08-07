@@ -1,11 +1,12 @@
 package redis
 
 import (
-	"auction-system/internal/domain"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
+
+	"auction-system/internal/domain"
 
 	"github.com/go-redis/redis/v8"
 )

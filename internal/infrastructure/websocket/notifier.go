@@ -1,8 +1,9 @@
 package websocket
 
 import (
-	"auction-system/internal/domain"
 	"context"
+
+	"auction-system/internal/domain"
 )
 
 type WebSocketNotifier struct {

@@ -82,14 +82,6 @@ func main() {
 	stateCache := redis.NewStateCache(rdb)
 	eventSubscriber := redis.NewRedisEventSubscriber(rdb, log)
 
-	// Initialize validator
-	//biddingDao := services.NewBiddingRuleDao(rdb)
-	//validator := services.NewBidValidator(biddingDao)
-	//if err := biddingDao.LoadRules(ctx); err != nil {
-	//	log.Error("Failed to load validation rules", "error", err)
-	//	os.Exit(1)
-	//}
-
 	// Initialize connection manager
 	connManager := websocket.NewConnectionManager(log)
 
@@ -97,21 +89,16 @@ func main() {
 	userNotifier := websocket.NewWebSocketNotifier(connManager)
 	auctionBroadcaster := websocket.NewWebSocketNotifier(connManager)
 
-	//biddingRuleDao := services.NewBiddingRuleDao(rdb)
-
 	// Initialize bid service
 	bidService := services.NewBidService(
 		bidCache,
 		stateCache,
-		//biddingRuleDao,
 		userNotifier,
-		//validator,
 		log,
 	)
 
 	// Initialize event listener
 	eventListener := services.NewEventListener(bidService, connManager, auctionBroadcaster, log)
-	//bidService.SetEventListener(eventListener)
 
 	// Initialize handlers
 	wsHandlers := handlers.NewWebSocketHandlers(bidService, auctionRepo, connManager, log)

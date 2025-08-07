@@ -1,10 +1,11 @@
 package services
 
 import (
-	"auction-system/internal/domain"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"auction-system/internal/domain"
 
 	"github.com/go-redis/redis/v8"
 )
