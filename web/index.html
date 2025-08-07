@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            padding: 5px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: #4facfe;
+            color: white;
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .status-disconnected {
+            background: #ffe6e6;
+            color: #d63031;
+            border: 1px solid #fab1a0;
+        }
+
+        .status-connected {
+            background: #e8f5e8;
+            color: #00b894;
+            border: 1px solid #81ecec;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-disconnected .status-dot {
+            background: #d63031;
+        }
+
+        .status-connected .status-dot {
+            background: #00b894;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .auction-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auction-info h3 {
+            color: #4facfe;
+            margin-bottom: 15px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #4facfe;
+        }
+
+        .bid-history {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .bid-item {
+            padding: 15px;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bid-item:last-child {
+            border-bottom: none;
+        }
+
+        .bid-item.winning {
+            background: #e8f5e8;
+            border-left: 4px solid #00b894;
+        }
+
+        .logs {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .log-info { background: rgba(79, 172, 254, 0.2); }
+        .log-success { background: rgba(0, 184, 148, 0.2); }
+        .log-error { background: rgba(255, 107, 107, 0.2); }
+        .log-warning { background: rgba(255, 193, 7, 0.2); }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: #00b894; }
+        .notification.error { background: #d63031; }
+        .notification.info { background: #4facfe; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏛️ Auction System</h1>
+        <p>Create auctions and place bids in real-time</p>
+    </div>
+
+    <div class="main-content">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('create-auction')">Create Auction</button>
+            <button class="tab" onclick="switchTab('join-auction')">Join Auction</button>
+            <button class="tab" onclick="switchTab('place-bid')">Place Bid</button>
+        </div>
+
+        <!-- Create Auction Tab -->
+        <div id="create-auction" class="tab-content active">
+            <h2>Create New Auction</h2>
+            <form id="create-auction-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="start-time">Start Time</label>
+                        <input type="datetime-local" id="start-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end-time">End Time</label>
+                        <input type="datetime-local" id="end-time" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="starting-bid">Starting Bid ($)</label>
+                    <input type="number" id="starting-bid" min="1" step="0.01" placeholder="100.00" required>
+                </div>
+                <button type="submit" class="btn">Create Auction</button>
+            </form>
+
+            <div id="auction-created" style="display: none;">
+                <div class="auction-info">
+                    <h3>✅ Auction Created Successfully!</h3>
+                    <div class="info-item">
+                        <span>Auction ID:</span>
+                        <strong id="created-auction-id"></strong>
+                    </div>
+                    <p style="margin-top: 15px;">Copy the Auction ID above to join this auction.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Auction Tab -->
+        <div id="join-auction" class="tab-content">
+            <h2>Join Auction</h2>
+            <form id="join-auction-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="auction-id">Auction ID</label>
+                        <input type="text" id="auction-id" placeholder="auction_123456" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-id">Your User ID</label>
+                        <input type="text" id="user-id" placeholder="user_123" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="service-selection">Auction Service</label>
+                    <select id="service-selection" onchange="updateServiceUrl()">
+                        <option value="1">auction-service-1 (Port 8080)</option>
+                        <option value="2">auction-service-2 (Port 8082)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="service-url">Auction Service URL</label>
+                    <input type="url" id="service-url" value="ws://localhost:8080" placeholder="ws://localhost:8080" required>
+                </div>
+                <div class="form-row">
+                    <button type="submit" class="btn" id="connect-btn">Connect to Auction</button>
+                    <button type="button" class="btn btn-danger" id="disconnect-btn" onclick="disconnectFromAuction()" disabled>Disconnect</button>
+                </div>
+            </form>
+
+            <div id="connection-status" class="connection-status status-disconnected">
+                <div class="status-dot"></div>
+                <span>Disconnected</span>
+            </div>
+
+            <div id="auction-details" style="display: none;">
+                <div class="auction-info">
+                    <h3>Current Auction Status</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span>Current Bid:</span>
+                            <strong id="current-bid">$0.00</strong>
+                        </div>
+                        <div class="info-item">
+                            <span>Current Winner:</span>
+                            <strong id="current-winner">None</strong>
+                        </div>
+                        <div class="info-item">
+                            <span>Status:</span>
+                            <strong id="auction-status">Active</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Place Bid Tab -->
+        <div id="place-bid" class="tab-content">
+            <h2>Place Your Bid</h2>
+
+            <div id="bid-form-container">
+                <form id="place-bid-form">
+                    <div class="form-group">
+                        <label for="bid-amount">Bid Amount ($)</label>
+                        <input type="number" id="bid-amount" min="0.01" step="0.01" placeholder="105.00" required>
+                        <small style="color: #666; margin-top: 5px; display: block;">
+                            Minimum bid: $<span id="min-bid">0.00</span>
+                        </small>
+                    </div>
+                    <button type="submit" class="btn" id="bid-btn" disabled>Place Bid</button>
+                </form>
+            </div>
+
+            <div id="bid-history-container">
+                <h3>Bid History</h3>
+                <div id="bid-history" class="bid-history">
+                    <div style="padding: 20px; text-align: center; color: #666;">
+                        No bids yet. Connect to an auction to see bid history.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Logs -->
+        <div id="logs-container">
+            <h3>Event Logs</h3>
+            <div id="logs" class="logs"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let websocket = null;
+    let currentAuctionId = null;
+    let currentUserId = null;
+    let currentBid = 0;
+    let bidHistory = [];
+
+    // Initialize datetime inputs with current time
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        const startTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
+        const endTime = new Date(now.getTime() + 65 * 60000); // 1 hour 5 minutes from now
+
+        document.getElementById('start-time').value = formatDateTimeLocal(startTime);
+        document.getElementById('end-time').value = formatDateTimeLocal(endTime);
+    });
+
+    function formatDateTimeLocal(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Show selected tab content
+        document.getElementById(tabName).classList.add('active');
+
+        // Add active class to clicked tab
+        event.target.classList.add('active');
+    }
+
+    function logMessage(message, type = 'info') {
+        const logs = document.getElementById('logs');
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry log-${type}`;
+        logEntry.textContent = `[${timestamp}] ${message}`;
+        logs.appendChild(logEntry);
+        logs.scrollTop = logs.scrollHeight;
+    }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => document.body.removeChild(notification), 300);
+        }, 3000);
+    }
+
+    // Create Auction Form Handler
+    document.getElementById('create-auction-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const startTime = document.getElementById('start-time').value;
+        const endTime = document.getElementById('end-time').value;
+        const startingBid = parseFloat(document.getElementById('starting-bid').value);
+
+        if (new Date(endTime) <= new Date(startTime)) {
+            showNotification('End time must be after start time', 'error');
+            return;
+        }
+
+        const requestData = {
+            start_time: new Date(startTime).toISOString(),
+            end_time: new Date(endTime).toISOString(),
+            starting_bid: startingBid
+        };
+
+        try {
+            logMessage('Creating auction...', 'info');
+            const response = await fetch('http://localhost:8081/api/v1/auctions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                document.getElementById('created-auction-id').textContent = result.auction_id;
+                document.getElementById('auction-created').style.display = 'block';
+                logMessage(`Auction created successfully: ${result.auction_id}`, 'success');
+                showNotification('Auction created successfully!', 'success');
+
+                // Auto-fill auction ID in join form
+                document.getElementById('auction-id').value = result.auction_id;
+            } else {
+                const error = await response.text();
+                logMessage(`Failed to create auction: ${error}`, 'error');
+                showNotification('Failed to create auction', 'error');
+            }
+        } catch (error) {
+            logMessage(`Error creating auction: ${error.message}`, 'error');
+            showNotification('Error creating auction', 'error');
+        }
+    });
+
+    // Join Auction Form Handler
+    document.getElementById('join-auction-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        connectToAuction();
+    });
+
+    function connectToAuction() {
+        const auctionId = document.getElementById('auction-id').value.trim();
+        const userId = document.getElementById('user-id').value.trim();
+        const serviceUrl = document.getElementById('service-url').value.trim();
+
+        if (!auctionId || !userId) {
+            showNotification('Please fill in all fields', 'error');
+            return;
+        }
+
+        currentAuctionId = auctionId;
+        currentUserId = userId;
+
+        // Create WebSocket connection
+        const wsUrl = `${serviceUrl}/${auctionId}?user_id=${userId}`;
+        const serviceId = document.getElementById('service-selection').value;
+
+        logMessage(`Connecting to auction-service-${serviceId}: ${wsUrl}`, 'info');
+
+        websocket = new WebSocket(wsUrl);
+
+        websocket.onopen = function() {
+            updateConnectionStatus(true);
+            logMessage('Connected to auction', 'success');
+            showNotification('Connected to auction!', 'success');
+
+            document.getElementById('connect-btn').disabled = true;
+            document.getElementById('disconnect-btn').disabled = false;
+            document.getElementById('bid-btn').disabled = false;
+            document.getElementById('auction-details').style.display = 'block';
+
+            // Send ping to keep connection alive
+            setInterval(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify({type: 'ping'}));
+                }
+            }, 30000);
+        };
+
+        websocket.onmessage = function(event) {
+            let messageData = event.data;
+            logMessage(`Received raw data: ${messageData}`, 'info');
+
+            let parsedData;
+            try {
+                // The raw message might be a JSON string containing a Base64 string,
+                // e.g., "\"eyJ...fQ==\"". We first parse the JSON string, then decode.
+                const b64Data = JSON.parse(messageData);
+                const decodedString = atob(b64Data);
+                parsedData = JSON.parse(decodedString);
+                logMessage(`Decoded JSON: ${JSON.stringify(parsedData, null, 2)}`, 'success');
+            } catch (e) {
+                // Fallback for messages that are not Base64 encoded but are plain JSON
+                try {
+                    parsedData = JSON.parse(messageData);
+                } catch (jsonError) {
+                    logMessage(`Could not parse message as JSON: ${messageData}`, 'error');
+                    return; // Stop processing if unparseable
+                }
+            }
+
+            handleWebSocketMessage(parsedData);
+        };
+
+        websocket.onclose = function() {
+            updateConnectionStatus(false);
+            logMessage('Disconnected from auction', 'warning');
+            showNotification('Disconnected from auction', 'warning');
+
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('disconnect-btn').disabled = true;
+            document.getElementById('bid-btn').disabled = true;
+        };
+
+        websocket.onerror = function(error) {
+            logMessage(`WebSocket error: ${error}`, 'error');
+            showNotification('Connection error', 'error');
+        };
+    }
+
+    function disconnectFromAuction() {
+        if (websocket) {
+            websocket.close();
+            websocket = null;
+            currentAuctionId = null;
+            currentUserId = null;
+        }
+    }
+
+    // Update the updateConnectionStatus function to show the connected service:
+    function updateConnectionStatus(connected) {
+        const status = document.getElementById('connection-status');
+        const serviceId = document.getElementById('service-selection').value;
+
+        if (connected) {
+            status.className = 'connection-status status-connected';
+            status.innerHTML = `<div class="status-dot"></div><span>Connected to auction-service-${serviceId}</span>`;
+        } else {
+            status.className = 'connection-status status-disconnected';
+            status.innerHTML = '<div class="status-dot"></div><span>Disconnected</span>';
+        }
+    }
+
+    function handleWebSocketMessage(data) {
+        // This function now receives an already-parsed JavaScript object.
+        logMessage(`Handling message type: ${data.type}`, 'info');
+
+        switch (data.type) {
+            case 'bid_update':
+                updateCurrentBid(data.current_bid, data.current_winner);
+                addToBidHistory(data.current_winner, data.current_bid, data.timestamp);
+                showNotification(`New winning bid: $${data.current_bid.toFixed(2)}`, 'success');
+                break;
+
+            case 'bid_rejected':
+                let reason = data.reason || 'Unknown reason';
+                logMessage(`Bid rejected: ${reason}`, 'error');
+                showNotification(`Bid rejected: ${reason}`, 'error');
+                if (data.current_bid) {
+                    updateCurrentBid(data.current_bid, data.current_winner);
+                }
+                break;
+
+            case 'auction_ended':
+                logMessage('Auction has ended', 'warning');
+                showNotification('Auction has ended!', 'info');
+                document.getElementById('auction-status').textContent = 'Ended';
+                document.getElementById('bid-btn').disabled = true;
+                break;
+
+            case 'auction_extended':
+                logMessage('Auction time extended', 'info');
+                showNotification('Auction time extended!', 'info');
+                break;
+
+            case 'pong':
+                // Ping response, no need to log.
+                break;
+
+            case 'error':
+                logMessage(`Error from server: ${data.message}`, 'error');
+                showNotification(data.message, 'error');
+                break;
+
+            default:
+                logMessage(`Received unhandled message type: ${data.type}`, 'warning');
+        }
+    }
+
+    function updateCurrentBid(bid, winner) {
+        currentBid = bid;
+        document.getElementById('current-bid').textContent = `$${bid.toFixed(2)}`;
+        document.getElementById('current-winner').textContent = winner || 'None';
+
+        // Update minimum bid (assuming 5% increment rule)
+        const minBid = bid * 1.05;
+        document.getElementById('min-bid').textContent = minBid.toFixed(2);
+        document.getElementById('bid-amount').min = minBid.toFixed(2);
+    }
+
+    function addToBidHistory(userId, amount, timestamp) {
+        const bidHistory = document.getElementById('bid-history');
+
+        // Clear placeholder text
+        if (bidHistory.innerHTML.includes('No bids yet')) {
+            bidHistory.innerHTML = '';
+        }
+
+        const bidItem = document.createElement('div');
+        bidItem.className = 'bid-item winning';
+
+        const time = new Date(timestamp).toLocaleTimeString();
+        bidItem.innerHTML = `
+                <div>
+                    <strong>${userId}</strong> bid <strong>$${amount.toFixed(2)}</strong>
+                    <div style="font-size: 0.9em; color: #666;">${time}</div>
+                </div>
+                <div style="color: #00b894; font-weight: bold;">WINNING</div>
+            `;
+
+        // Remove winning class from previous bids
+        document.querySelectorAll('.bid-item').forEach(item => {
+            item.classList.remove('winning');
+            item.lastElementChild.textContent = '';
+            item.lastElementChild.style.color = '#666';
+        });
+
+        bidHistory.insertBefore(bidItem, bidHistory.firstChild);
+    }
+
+    // Place Bid Form Handler
+    document.getElementById('place-bid-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            showNotification('Not connected to auction', 'error');
+            return;
+        }
+
+        const bidAmount = parseFloat(document.getElementById('bid-amount').value);
+
+        if (bidAmount <= currentBid) {
+            showNotification('Bid must be higher than current bid', 'error');
+            return;
+        }
+
+        const bidMessage = {
+            type: 'place_bid',
+            amount: bidAmount.toFixed(2)
+        };
+
+        websocket.send(JSON.stringify(bidMessage));
+        logMessage(`Placing bid: $${bidAmount.toFixed(2)}`, 'info');
+
+        // Clear the input
+        document.getElementById('bid-amount').value = '';
+    });
+
+    // Auto-generate user ID
+    if (!document.getElementById('user-id').value) {
+        document.getElementById('user-id').value = 'user_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Add this function to the script section:
+    function updateServiceUrl() {
+        const serviceSelection = document.getElementById('service-selection').value;
+        const serviceUrl = document.getElementById('service-url');
+
+        if (serviceSelection === '1') {
+            serviceUrl.value = 'ws://localhost:8080/ws/auction';
+        } else {
+            serviceUrl.value = 'ws://localhost:8082/ws/auction';
+        }
+    }
+
+    // Add URL parameter handling to the DOMContentLoaded event:
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        const startTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
+        const endTime = new Date(now.getTime() + 65 * 60000); // 1 hour 5 minutes from now
+
+        document.getElementById('start-time').value = formatDateTimeLocal(startTime);
+        document.getElementById('end-time').value = formatDateTimeLocal(endTime);
+
+        // Check URL for service parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceParam = urlParams.get('service');
+
+        if (serviceParam === '2') {
+            document.getElementById('service-selection').value = '2';
+            updateServiceUrl();
+        }
+
+        // Auto-generate user ID if not present
+        if (!document.getElementById('user-id').value) {
+            document.getElementById('user-id').value = 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+    });
+
+    // Initial log message
+    logMessage('Auction System UI loaded', 'success');
+</script>
+</body>
+</html>

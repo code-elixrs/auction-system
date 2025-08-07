@@ -1,0 +1,166 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - auction-network
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: auction_db
+      MYSQL_USER: auction_user
+      MYSQL_PASSWORD: auction_pass
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../scripts/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --bind-address=0.0.0.0
+      --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - auction-network
+    restart: unless-stopped
+
+  # AUCTION SERVICE - Runs on port 8081
+  auction-service:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+      args:
+        SERVICE: auction-service
+    ports:
+      - "8081:8081"  # Host:Container mapping
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080              # This is ignored, we use 8081 in code
+      - MANAGER_PORT=8081             # Explicit manager port
+      - REDIS_ADDRESS=redis:6379
+      - MYSQL_DSN=auction_user:auction_pass@tcp(mysql:3306)/auction_db?parseTime=true
+      - INSTANCE_ID=auction-manager-1
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - auction-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # BIDDING SERVICE 1 - Runs on port 8080
+  bidding-service-1:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+      args:
+        SERVICE: bidding-service
+    ports:
+      - "8080:8080"  # Host:Container mapping
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080              # Auction service port
+      - REDIS_ADDRESS=redis:6379
+      - MYSQL_DSN=auction_user:auction_pass@tcp(mysql:3306)/auction_db?parseTime=true
+      - INSTANCE_ID=bidding-service-1
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - auction-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # BIDDING SERVICE 2 - Runs on port 8082 (host) -> 8080 (container)
+  bidding-service-2:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+      args:
+        SERVICE: bidding-service
+    ports:
+      - "8082:8080"  # Different host port, same container port
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080              # Same container port as service-1
+      - REDIS_ADDRESS=redis:6379
+      - MYSQL_DSN=auction_user:auction_pass@tcp(mysql:3306)/auction_db?parseTime=true
+      - INSTANCE_ID=bidding-service-2
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - auction-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ANALYTICS SERVICE - No external ports needed
+  analytics-service:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+      args:
+        SERVICE: analytics-service
+    environment:
+      - REDIS_ADDRESS=redis:6379
+      - MYSQL_DSN=auction_user:auction_pass@tcp(mysql:3306)/auction_db?parseTime=true
+      - INSTANCE_ID=analytics-service-1
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - auction-network
+
+volumes:
+  redis_data:
+  mysql_data:
+
+networks:
+  auction-network:
+    driver: bridge
