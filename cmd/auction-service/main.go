@@ -28,7 +28,7 @@ import (
 
 func main() {
 	log := logger.New()
-	log.Info("Starting Auction Manager Service")
+	log.Info("Starting Auction Service")
 
 	// Load configuration
 	// TODO: This should be service specific
@@ -168,7 +168,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("Shutting down auction manager service...")
+	log.Info("Shutting down auction service...")
 
 	// Graceful shutdown
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -185,7 +185,7 @@ func main() {
 		log.Error("Server forced to shutdown", "error", err)
 	}
 
-	log.Info("Auction manager service stopped")
+	log.Info("Auction service stopped")
 }
 
 func corsDebuggingEndpoints(e *echo.Echo, cfg *config.Config) {
@@ -249,7 +249,7 @@ func healthStatusHandler(cfg *config.Config) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"status":    "ok",
-			"service":   "auction-manager",
+			"service":   "auction-service",
 			"timestamp": time.Now().Format(time.RFC3339),
 			"port":      cfg.Server.Port,
 			"version":   "1.0.0",

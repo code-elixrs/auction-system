@@ -119,7 +119,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info("Starting auction service", "address", server.Addr)
+		log.Info("Starting bidding service", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Server failed to start", "error", err)
 			os.Exit(1)
@@ -131,7 +131,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("Shutting down auction service...")
+	log.Info("Shutting down bidding service...")
 
 	// Graceful shutdown
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -142,5 +142,5 @@ func main() {
 		log.Error("Server forced to shutdown", "error", err)
 	}
 
-	log.Info("Auction service stopped")
+	log.Info("Bidding service stopped")
 }
