@@ -1,6 +1,8 @@
 package main
 
 import (
+	"auction-system/internal/api/handlers"
+	"auction-system/pkg/utils"
 	"context"
 	"database/sql"
 	"errors"
@@ -23,107 +25,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
-
-type AuctionHandler struct {
-	auctionManager *services.AuctionManager
-	log            logger.Logger
-}
-
-type CreateAuctionRequest struct {
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	StartingBid float64   `json:"starting_bid"`
-}
-
-type CreateAuctionResponse struct {
-	AuctionID   string    `json:"auction_id"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	StartingBid float64   `json:"starting_bid"`
-	Status      string    `json:"status"`
-}
-
-func NewAuctionHandler(auctionManager *services.AuctionManager, log logger.Logger) *AuctionHandler {
-	return &AuctionHandler{
-		auctionManager: auctionManager,
-		log:            log,
-	}
-}
-
-func (h *AuctionHandler) CreateAuction(c echo.Context) error {
-	h.log.Info("CreateAuction endpoint called",
-		"method", c.Request().Method,
-		"remote_addr", c.RealIP(),
-		"user_agent", c.Request().UserAgent(),
-		"content_type", c.Request().Header.Get("Content-Type"))
-
-	var req CreateAuctionRequest
-	if err := c.Bind(&req); err != nil {
-		h.log.Error("Failed to bind request", "error", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
-	}
-
-	// Validation
-	if req.StartTime.Before(time.Now()) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Start time must be in the future"})
-	}
-
-	if req.EndTime.Before(req.StartTime) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "End time must be after start time"})
-	}
-
-	if req.StartingBid <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Starting bid must be positive"})
-	}
-
-	auction, err := h.auctionManager.CreateAuction(c.Request().Context(), req.StartTime, req.EndTime, req.StartingBid)
-	if err != nil {
-		h.log.Error("Failed to create auction", "error", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create auction"})
-	}
-
-	response := CreateAuctionResponse{
-		AuctionID:   auction.ID,
-		StartTime:   auction.StartTime,
-		EndTime:     auction.EndTime,
-		StartingBid: req.StartingBid,
-		Status:      auction.Status.String(),
-	}
-
-	h.log.Info("Auction created successfully", "auction_id", auction.ID)
-	return c.JSON(http.StatusCreated, response)
-}
-
-func (h *AuctionHandler) GetAuction(c echo.Context) error {
-	auctionID := c.Param("id")
-	h.log.Info("GetAuction endpoint called", "auction_id", auctionID)
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"auction_id": auctionID,
-		"message":    "Auction details would be here",
-	})
-}
-
-func (h *AuctionHandler) ExtendAuction(c echo.Context) error {
-	auctionID := c.Param("id")
-	extensionStr := c.QueryParam("seconds")
-
-	h.log.Info("ExtendAuction endpoint called", "auction_id", auctionID, "seconds", extensionStr)
-
-	if extensionStr == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Extension duration required"})
-	}
-
-	extensionDuration := 30 * time.Second
-	if err := h.auctionManager.CheckAndExtendAuction(c.Request().Context(), auctionID, extensionDuration); err != nil {
-		h.log.Error("Failed to extend auction", "error", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to extend auction"})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Auction extended successfully",
-	})
-}
 
 func main() {
 	log := logger.New()
@@ -154,28 +55,14 @@ func main() {
 	log.Info("Connected to Redis", "address", cfg.Redis.Address)
 
 	// Initialize MySQL
-	db, err := sql.Open("mysql", cfg.MySQL.DSN)
-	if err != nil {
-		log.Error("Failed to connect to MySQL", "error", err)
-		os.Exit(1)
-	}
+	db := utils.InitializeMysql(cfg, log, ctx)
+
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
 			log.Error("Failed to close MySQL connection", "error", err)
 		}
 	}(db)
-
-	db.SetMaxOpenConns(cfg.MySQL.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MySQL.MaxIdleConns)
-	db.SetConnMaxLifetime(cfg.MySQL.ConnMaxLifetime)
-
-	// Test MySQL connection
-	if err := db.PingContext(ctx); err != nil {
-		log.Error("Failed to ping MySQL", "error", err)
-		os.Exit(1)
-	}
-	log.Info("Connected to MySQL")
 
 	// TODO: Add loggers and proper logging in each components
 	// Initialize repositories
@@ -188,7 +75,6 @@ func main() {
 	eventPublisher := redis.NewEventPublisher(rdb)
 
 	//Initialize validator
-
 	biddingRuleDao := services.NewBiddingRuleDao(rdb)
 	if err := biddingRuleDao.LoadRules(ctx); err != nil {
 		log.Error("Failed to load validation rules", "error", err)
@@ -199,7 +85,6 @@ func main() {
 	leaderElection := leader.NewRedisLeaderElection(rdb, cfg.Leader.TTL)
 
 	// Initialize auction manager
-
 	//TODO: Remove this cyclic dependency later!!
 	auctionManager := services.NewAuctionManager(
 		auctionRepo,
@@ -229,42 +114,10 @@ func main() {
 	}))
 	e.Use(middleware.Recover())
 
-	// CORS Middleware - Very permissive for debugging
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{
-			echo.GET, echo.HEAD, echo.PUT, echo.PATCH,
-			echo.POST, echo.DELETE, echo.OPTIONS,
-		},
-		AllowHeaders: []string{
-			echo.HeaderOrigin,
-			echo.HeaderContentType,
-			echo.HeaderAccept,
-			echo.HeaderAuthorization,
-			echo.HeaderXRequestedWith,
-			echo.HeaderAccessControlRequestMethod,
-			echo.HeaderAccessControlRequestHeaders,
-		},
-		AllowCredentials: true,
-		MaxAge:           86400,
-	}))
-
-	// Request debugging middleware
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			req := c.Request()
-			log.Info("Request received",
-				"method", req.Method,
-				"path", req.URL.Path,
-				"remote_addr", c.RealIP(),
-				"origin", req.Header.Get("Origin"),
-				"content_type", req.Header.Get("Content-Type"))
-			return next(c)
-		}
-	})
+	addCorsDebuggingMiddleware(e, log)
 
 	// Initialize handlers
-	auctionHandler := NewAuctionHandler(auctionManager, log)
+	auctionHandler := handlers.NewAuctionHandler(auctionManager, log)
 
 	// API routes
 	api := e.Group("/api/v1")
@@ -273,34 +126,9 @@ func main() {
 	api.POST("/auctions/:id/extend", auctionHandler.ExtendAuction)
 
 	// Health check endpoint
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"status":    "ok",
-			"service":   "auction-manager",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"port":      cfg.Server.Port,
-			"version":   "1.0.0",
-		})
-	})
+	e.GET("/health", healthStatusHandler(cfg))
 
-	// TODO: Remove after development!!
-	// Debug CORS endpoint
-	e.GET("/debug/cors", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "CORS is working",
-			"method":  c.Request().Method,
-			"origin":  c.Request().Header.Get("Origin"),
-			"port":    cfg.Server.Port,
-		})
-	})
-
-	e.POST("/debug/cors", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "POST CORS is working",
-			"method":  c.Request().Method,
-			"origin":  c.Request().Header.Get("Origin"),
-		})
-	})
+	corsDebuggingEndpoints(e, cfg)
 
 	// Start background services
 	go func() {
@@ -309,9 +137,7 @@ func main() {
 		}
 	}()
 
-	// Try to become leader
 	go func() {
-		//instanceID := cfg.Instance.ID + "-manager"
 		for {
 			became, err := leaderElection.BecomeLeader(context.Background(), cfg.Instance.ID)
 			if err != nil {
@@ -360,4 +186,73 @@ func main() {
 	}
 
 	log.Info("Auction manager service stopped")
+}
+
+func corsDebuggingEndpoints(e *echo.Echo, cfg *config.Config) {
+	// TODO: Remove after development!!
+	// Debug CORS endpoint
+	e.GET("/debug/cors", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"message": "CORS is working",
+			"method":  c.Request().Method,
+			"origin":  c.Request().Header.Get("Origin"),
+			"port":    cfg.Server.Port,
+		})
+	})
+
+	e.POST("/debug/cors", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"message": "POST CORS is working",
+			"method":  c.Request().Method,
+			"origin":  c.Request().Header.Get("Origin"),
+		})
+	})
+}
+
+func addCorsDebuggingMiddleware(e *echo.Echo, log logger.Logger) {
+	// CORS Middleware - For local testing
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{
+			echo.GET, echo.HEAD, echo.PUT, echo.PATCH,
+			echo.POST, echo.DELETE, echo.OPTIONS,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+			echo.HeaderXRequestedWith,
+			echo.HeaderAccessControlRequestMethod,
+			echo.HeaderAccessControlRequestHeaders,
+		},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	}))
+
+	// Request debugging middleware
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			req := c.Request()
+			log.Info("Request received",
+				"method", req.Method,
+				"path", req.URL.Path,
+				"remote_addr", c.RealIP(),
+				"origin", req.Header.Get("Origin"),
+				"content_type", req.Header.Get("Content-Type"))
+			return next(c)
+		}
+	})
+}
+
+func healthStatusHandler(cfg *config.Config) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"status":    "ok",
+			"service":   "auction-manager",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"port":      cfg.Server.Port,
+			"version":   "1.0.0",
+		})
+	}
 }

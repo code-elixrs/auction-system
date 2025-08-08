@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"auction-system/internal/domain/repositories"
 	"context"
 	"net/http"
 	"strconv"
@@ -22,13 +23,13 @@ var upgrader = websocket.Upgrader{
 
 type WebSocketHandler struct {
 	bidService  *services.BidService
-	auctionRepo domain.AuctionRepository
+	auctionRepo repositories.AuctionRepository
 	connManager domain.ConnectionManager
 	log         logger.Logger
 }
 
 func NewWebSocketHandler(bidService *services.BidService,
-	auctionRepo domain.AuctionRepository,
+	auctionRepo repositories.AuctionRepository,
 	connManager domain.ConnectionManager, log logger.Logger) *WebSocketHandler {
 	return &WebSocketHandler{
 		bidService:  bidService,
@@ -53,11 +54,6 @@ func (h *WebSocketHandler) HandleConnection(w http.ResponseWriter, r *http.Reque
 
 	// Check auction status
 	now := time.Now()
-	if now.Before(auction.StartTime) {
-		h.log.Info("Rejected connection - auction not started yet", "auctionID", auctionID)
-		http.Error(w, "auction has not started yet", http.StatusForbidden)
-		return
-	}
 
 	if now.After(auction.EndTime) {
 		h.log.Info("Rejected connection - auction has ended", "auctionID", auctionID)
@@ -83,7 +79,10 @@ func (h *WebSocketHandler) HandleConnection(w http.ResponseWriter, r *http.Reque
 	// Register connection
 	if err := h.connManager.RegisterConnection(userID, auctionID, wsConn); err != nil {
 		h.log.Error("Failed to register connection", "error", err)
-		conn.Close()
+		err := conn.Close()
+		if err != nil {
+			return
+		}
 		return
 	}
 

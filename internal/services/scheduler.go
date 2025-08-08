@@ -1,24 +1,25 @@
 package services
 
 import (
+	"auction-system/internal/domain/repositories"
 	"context"
 	"time"
 
 	"auction-system/internal/domain"
 	"auction-system/pkg/logger"
 	"auction-system/pkg/utils"
-	
+
 	"github.com/robfig/cron/v3"
 )
 
 type CronAuctionScheduler struct {
 	cron       *cron.Cron
-	repo       domain.SchedulerRepository
+	repo       repositories.SchedulerRepository
 	auctionMgr *AuctionManager
 	log        logger.Logger
 }
 
-func NewCronAuctionScheduler(repo domain.SchedulerRepository, auctionMgr *AuctionManager,
+func NewCronAuctionScheduler(repo repositories.SchedulerRepository, auctionMgr *AuctionManager,
 	log logger.Logger) *CronAuctionScheduler {
 	return &CronAuctionScheduler{
 		cron:       cron.New(cron.WithSeconds()),

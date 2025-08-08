@@ -36,10 +36,6 @@ func NewBidService(
 	return service
 }
 
-//func (s *BidService) SetEventListener(eventListener *EventListener) {
-//	s.eventListener = eventListener
-//}
-
 func (s *BidService) PlaceBid(ctx context.Context, auctionID, userID string, amount float64) error {
 	s.log.Info("Placing bid", "auction_id", auctionID, "user_id", userID, "amount", amount)
 
@@ -66,22 +62,6 @@ func (s *BidService) PlaceBid(ctx context.Context, auctionID, userID string, amo
 	if err := s.ensureAuctionCached(ctx, auctionID); err != nil {
 		return err
 	}
-
-	//// Quick local validation
-	//s.cacheMutex.RLock()
-	//cachedAuction := s.localCache[auctionID]
-	//s.cacheMutex.RUnlock()
-
-	//if !s.validator.ValidateIncrement(cachedAuction.CurrentBid, amount) {
-	//	s.userNotifier.NotifyUser(ctx, userID, map[string]interface{}{
-	//		"type":             "bid_rejected",
-	//		"reason":           "insufficient_increment",
-	//		"current_bid":      cachedAuction.CurrentBid,
-	//		"current_winner":   cachedAuction.WinnerID,
-	//		"required_minimum": s.biddingRuleDao.GetMinimumBid(cachedAuction.CurrentBid),
-	//	})
-	//	return nil
-	//}
 
 	// Atomic Redis update
 	_, err = s.bidCache.AtomicBidUpdate(ctx, auctionID, userID, amount)

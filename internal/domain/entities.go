@@ -8,6 +8,7 @@ type Auction struct {
 	ID        string
 	StartTime time.Time
 	EndTime   time.Time
+	StartBid  float64
 	Status    AuctionStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time

@@ -75,7 +75,12 @@ func main() {
 		log.Error("Failed to connect to MySQL", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Error("Failed to close MySQL connection", "error", err)
+		}
+	}(db)
 
 	// Test MySQL connection
 	if err := db.PingContext(ctx); err != nil {

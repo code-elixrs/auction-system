@@ -18,6 +18,7 @@ CREATE TABLE auctions (
                           id VARCHAR(255) PRIMARY KEY,
                           start_time TIMESTAMP NOT NULL,
                           end_time TIMESTAMP NOT NULL,
+                          start_bid   FLOAT NOT NULL,
                           status INT NOT NULL DEFAULT 0 COMMENT '0=pending, 1=active, 2=ended, 3=cancelled',
                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

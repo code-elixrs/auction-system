@@ -1,6 +1,7 @@
 package services
 
 import (
+	"auction-system/internal/domain/repositories"
 	"context"
 	"sync"
 	"time"
@@ -11,13 +12,13 @@ import (
 )
 
 type AuctionManager struct {
-	auctionRepo    domain.AuctionRepository
+	auctionRepo    repositories.AuctionRepository
 	stateCache     domain.AuctionStateCache
 	bidCache       domain.BidCache
 	eventPub       domain.EventPublisher
 	scheduler      domain.AuctionScheduler
 	leaderElection domain.LeaderElection
-	biddingRuleDao domain.BiddingRuleDao
+	biddingRuleDao domain.BiddingRule
 	instanceID     string
 	log            logger.Logger
 	auctionTimers  map[string]*time.Timer
@@ -25,13 +26,13 @@ type AuctionManager struct {
 }
 
 func NewAuctionManager(
-	auctionRepo domain.AuctionRepository,
+	auctionRepo repositories.AuctionRepository,
 	stateCache domain.AuctionStateCache,
 	bidCache domain.BidCache,
 	eventPub domain.EventPublisher,
 	scheduler domain.AuctionScheduler,
 	leaderElection domain.LeaderElection,
-	biddingRuleDao domain.BiddingRuleDao,
+	biddingRuleDao domain.BiddingRule,
 	instanceID string,
 	log logger.Logger,
 ) *AuctionManager {
@@ -54,12 +55,12 @@ func (am *AuctionManager) CreateAuction(ctx context.Context, startTime, endTime 
 		ID:        utils.GenerateID("auction"),
 		StartTime: startTime,
 		EndTime:   endTime,
+		StartBid:  startingBid,
 		Status:    domain.AuctionPending,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	// Save to database
 	if err := am.auctionRepo.CreateAuction(ctx, auction); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auction-system/pkg/utils"
 	"context"
 	"database/sql"
 	"errors"
@@ -51,28 +52,14 @@ func main() {
 	}
 
 	// Initialize MySQL
-	// TODO: Move to a method
-	db, err := sql.Open("mysql", cfg.MySQL.DSN)
-	if err != nil {
-		log.Error("Failed to connect to MySQL", "error", err)
-		os.Exit(1)
-	}
+	db := utils.InitializeMysql(cfg, log, ctx)
+
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
 			log.Error("Failed to close MySQL connection", "error", err)
 		}
 	}(db)
-
-	db.SetMaxOpenConns(cfg.MySQL.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MySQL.MaxIdleConns)
-	db.SetConnMaxLifetime(cfg.MySQL.ConnMaxLifetime)
-
-	// Test MySQL connection
-	if err := db.PingContext(ctx); err != nil {
-		log.Error("Failed to ping MySQL", "error", err)
-		os.Exit(1)
-	}
 
 	// Initialize repositories
 	auctionRepo := mysql.NewMySQLAuctionRepository(db)
@@ -117,6 +104,9 @@ func main() {
 	}).Methods("GET")
 
 	go func() {
+
+		// TODO: Subscribe the auction id related event stream in case auction info is being populated in local cache with failover mechanism.
+		// TODO: Remove the global event stream and rely on auction specific event streams
 		if err := eventListener.Start(context.Background(), eventSubscriber); err != nil {
 			log.Error("Failed to start event listener", "error", err)
 		}

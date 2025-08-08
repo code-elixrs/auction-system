@@ -12,7 +12,7 @@ GOMOD=$(GOCMD) mod
 BUILD_DIR=build
 
 # Services
-SERVICES=auction-service analytics-service auction-manager
+SERVICES=auction-service analytics-service bidding-service
 
 # Default target
 all: build
@@ -57,11 +57,11 @@ run-analytics-service:
 	@$(GOCMD) run ./cmd/analytics-service
 
 run-auction-manager:
-	@echo "Running auction manager..."
-	@$(GOCMD) run ./cmd/auction-manager
+	@echo "Running bidding service..."
+	@$(GOCMD) run ./cmd/bidding-service
 
 # Docker commands
-docker-up: docker-rebuild
+docker-up:
 	@echo "Starting services with Docker Compose..."
 	@docker-compose -f deployments/docker-compose.yml up -d
 

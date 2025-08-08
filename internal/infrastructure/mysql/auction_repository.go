@@ -20,18 +20,18 @@ func NewMySQLAuctionRepository(db *sql.DB) *MySQLAuctionRepository {
 
 func (r *MySQLAuctionRepository) CreateAuction(ctx context.Context, auction *domain.Auction) error {
 	query := `
-        INSERT INTO auctions (id, start_time, end_time, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO auctions (id, start_time, end_time, start_bid, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?,?)
     `
 	_, err := r.db.ExecContext(ctx, query,
-		auction.ID, auction.StartTime, auction.EndTime,
+		auction.ID, auction.StartTime, auction.EndTime, auction.StartBid,
 		int(auction.Status), auction.CreatedAt, auction.UpdatedAt)
 	return err
 }
 
 func (r *MySQLAuctionRepository) GetAuction(ctx context.Context, auctionID string) (*domain.Auction, error) {
 	query := `
-        SELECT id, start_time, end_time, status, created_at, updated_at
+        SELECT id, start_time, end_time, start_bid, status, created_at, updated_at
         FROM auctions WHERE id = ?
     `
 
@@ -39,7 +39,7 @@ func (r *MySQLAuctionRepository) GetAuction(ctx context.Context, auctionID strin
 	var status int
 
 	err := r.db.QueryRowContext(ctx, query, auctionID).Scan(
-		&auction.ID, &auction.StartTime, &auction.EndTime,
+		&auction.ID, &auction.StartTime, &auction.EndTime, &auction.StartBid,
 		&status, &auction.CreatedAt, &auction.UpdatedAt)
 
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *MySQLAuctionRepository) UpdateAuctionStatus(ctx context.Context, auctio
 
 func (r *MySQLAuctionRepository) GetActiveAuctions(ctx context.Context) ([]*domain.Auction, error) {
 	query := `
-        SELECT id, start_time, end_time, status, created_at, updated_at
+        SELECT id, start_time, end_time, start_bid, status, created_at, updated_at
         FROM auctions WHERE status = ?
     `
 
@@ -73,7 +73,7 @@ func (r *MySQLAuctionRepository) GetActiveAuctions(ctx context.Context) ([]*doma
 		var auction domain.Auction
 		var status int
 
-		err := rows.Scan(&auction.ID, &auction.StartTime, &auction.EndTime,
+		err := rows.Scan(&auction.ID, &auction.StartTime, &auction.EndTime, &auction.StartBid,
 			&status, &auction.CreatedAt, &auction.UpdatedAt)
 		if err != nil {
 			return nil, err

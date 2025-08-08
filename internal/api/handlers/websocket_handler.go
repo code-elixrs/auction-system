@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"auction-system/internal/domain/repositories"
 	"net/http"
 
-	"auction-system/internal/domain"
 	"auction-system/internal/infrastructure/websocket"
 	"auction-system/internal/services"
 	"auction-system/pkg/logger"
@@ -15,7 +15,7 @@ type WebSocketHandlers struct {
 	wsHandler *websocket.WebSocketHandler
 }
 
-func NewWebSocketHandlers(bidService *services.BidService, auctionRepo domain.AuctionRepository,
+func NewWebSocketHandlers(bidService *services.BidService, auctionRepo repositories.AuctionRepository,
 	connManager *websocket.ConnectionManager, log logger.Logger) *WebSocketHandlers {
 	wsHandler := websocket.NewWebSocketHandler(bidService, auctionRepo, connManager, log)
 	return &WebSocketHandlers{
