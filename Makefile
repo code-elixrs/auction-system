@@ -56,7 +56,7 @@ run-analytics-service:
 	@echo "Running analytics service..."
 	@$(GOCMD) run ./cmd/analytics-service
 
-run-auction-manager:
+run-bidding-service:
 	@echo "Running bidding service..."
 	@$(GOCMD) run ./cmd/bidding-service
 
@@ -145,9 +145,9 @@ help:
 	@echo "  test               - Run unit tests"
 	@echo "  test-coverage      - Run tests with coverage"
 	@echo "  test-integration   - Run integration tests"
-	@echo "  run-auction-service     - Run auction service locally"
+	@echo "  run-bidding-service     - Run bidding service locally"
 	@echo "  run-analytics-service   - Run analytics service locally"
-	@echo "  run-auction-manager     - Run auction manager locally"
+	@echo "  run-auction-service     - Run auction service locally"
 	@echo "  docker-up          - Start all services with Docker"
 	@echo "  docker-down        - Stop all services"
 	@echo "  docker-rebuild     - Rebuild and restart services"
