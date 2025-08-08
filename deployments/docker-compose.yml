@@ -45,10 +45,8 @@ services:
   # AUCTION SERVICE - Runs on port 8081
   auction-service:
     build:
-      context: ..
+      context: ../auction-service
       dockerfile: deployments/Dockerfile
-      args:
-        SERVICE: auction-service
     ports:
       - "8081:8080"  # Host:Container mapping
     environment:
@@ -77,10 +75,8 @@ services:
   # BIDDING SERVICE 1 - Runs on port 8080
   bidding-service-1:
     build:
-      context: ..
+      context: ../bidding-service
       dockerfile: deployments/Dockerfile
-      args:
-        SERVICE: bidding-service
     ports:
       - "8080:8080"  # Host:Container mapping
     environment:
@@ -108,10 +104,8 @@ services:
   # BIDDING SERVICE 2 - Runs on port 8082 (host) -> 8080 (container)
   bidding-service-2:
     build:
-      context: ..
+      context: ../bidding-service
       dockerfile: deployments/Dockerfile
-      args:
-        SERVICE: bidding-service
     ports:
       - "8082:8080"  # Different host port, same container port
     environment:
@@ -139,10 +133,8 @@ services:
   # ANALYTICS SERVICE - No external ports needed
   analytics-service:
     build:
-      context: ..
+      context: ../analytics-service
       dockerfile: deployments/Dockerfile
-      args:
-        SERVICE: analytics-service
     environment:
       - REDIS_ADDRESS=redis:6379
       - MYSQL_DSN=auction_user:auction_pass@tcp(mysql:3306)/auction_db?parseTime=true

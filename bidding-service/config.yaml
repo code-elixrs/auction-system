@@ -1,0 +1,26 @@
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+# Redis configuration
+redis:
+  address: "localhost:6379"
+  password: ""
+  db: 0
+
+# MySQL configuration
+mysql:
+  dsn: "auction_user:auction_pass@tcp(localhost:3306)/auction_db?parseTime=true"
+  max_open_conns: 25
+  max_idle_conns: 10
+  conn_max_lifetime: "5m"
+
+# Leader election configuration
+leader:
+  ttl: "30s"
+
+# Instance configuration
+instance:
+  id: "auction-service-1"
+

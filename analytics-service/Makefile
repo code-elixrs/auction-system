@@ -61,7 +61,7 @@ run-bidding-service:
 	@$(GOCMD) run ./cmd/bidding-service
 
 # Docker commands
-docker-up: docker-rebuild
+docker-up:
 	@echo "Starting services with Docker Compose..."
 	@docker-compose -f deployments/docker-compose.yml up -d
 

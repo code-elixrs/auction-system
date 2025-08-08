@@ -54,7 +54,7 @@ A high-performance, low-latency distributed auction system built with Go, Redis,
    ```
 4. **Run UI locally**
     ```bash
-     python3 -m http.server 3000 -d ui-service/web
+    python3 -m http.server 3000 -d web/
    ```
 ### Docker Deployment
 
@@ -199,6 +199,37 @@ make fmt
     - Subscribe to Redis pub/sub events
     - Store successful bid events to MySQL
     - Extensible for future analytics features
+
+
+## Project Structure
+
+```
+.
+├── cmd                         # Main applications
+│   ├── analytics-service       # Event analytics service
+│   ├── auction-service         # Auction lifecycle management
+│   └── bidding-service         # WebSocket + bid processing service
+├── deployments
+├── internal
+│   ├── api                     # HTTP handlers and middleware
+│   │   ├── handlers
+│   │   └── middleware
+│   ├── config                  # Configuration management
+│   ├── domain                  # Business entities and interfaces
+│   │   └── repositories
+│   ├── infrastructure          # External dependencies (Redis, MySQL, WebSocket)
+│   │   ├── leader
+│   │   ├── mysql
+│   │   ├── redis
+│   │   └── websocket
+│   └── services                # Business logic layer
+├── pkg                         # Shared utilities
+│   ├── logger
+│   └── utils
+├── scripts                     # Database migrations and utilities
+└── web                         # For webUI
+```
+
 
 ## Environment Variables
 

@@ -15,11 +15,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build argument for service selection
-ARG SERVICE
-
 # Build the specific service
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/${SERVICE}
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/
 
 # Final stage
 FROM alpine:latest
